@@ -12,19 +12,6 @@ https://codeforces.com/group/PVbQ8eK2T4/contest/350943/submission/134595681
 Ответы на все запросы вида ? x*/
 #include <iostream>
 #include <vector>
-/*struct Node{
-    long long sum;
-    int tl;
-    int tr;
-    int left=-1;
-    int right=-1;
-    Node(long long sum_t, int tl_t, int tr_t){
-        sum=sum_t;
-        tl=tl_t;
-        tr=tr_t;
-    };
-};*/
-
 void update( int v, long long pos, int x, std::vector<long long> &sum, std::vector<int> &tl,
              std::vector<int> &tr, std::vector<int> &left, std::vector<int> &right){
     sum[v]+=x;
