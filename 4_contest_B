@@ -1,0 +1,238 @@
+/*Шестакова Ксения, Б05-126
+https://codeforces.com/group/PVbQ8eK2T4/contest/357142/submission/138782725
+
+Реализуйте splay-дерево, которое поддерживает множество S целых чисел, в котором разрешается производить следующие операции:
+
+add(i) — добавить в множество S число i (если он там уже есть, то множество не меняется);
+sum(l,r) — вывести сумму всех элементов x из S, которые удовлетворяют неравенству l≤x≤r.
+Решения, не использующие splay-деревья, будут игнорироваться.
+
+Решения, не использующие операции split и merge, будут оцениваться в 2 балла. Решения, использующие операции split и merge, оцениваются в 3 балла.
+
+Входные данные
+Исходно множество S пусто. Первая строка входного файла содержит n — количество операций (1≤n≤300000). Следующие n строк содержат операции. Каждая операция имеет вид либо «+ i», либо «? l r». Операция «? l r» задает запрос sum(l,r).
+
+Если операция «+ i» идет во входном файле в начале или после другой операции «+», то она задает операцию add(i). Если же она идет после запроса «?», и результат этого запроса был y, то выполняется операция add((i+y)mod109).*/
+
+#include <iostream>
+#include<string>
+
+struct Node{
+    long long key;
+    long long sum;
+    Node* left;
+    Node* right;
+    Node* parent;
+    Node(long long key_value, Node* left_son, Node* right_son);
+    Node(long long key_value) : key(key_value), left(nullptr), right(nullptr), parent(nullptr) {};//parent(nullptr)
+
+};
+Node::Node(long long key_value, Node *left_son, Node *right_son): key(key_value), left(left_son), right(right_son), parent(nullptr){
+    if (left_son!= nullptr) left_son->parent=this;
+    if (right_son!= nullptr) right_son->parent=this;
+}
+long long get_sum(Node* node){
+    if (node== nullptr) return 0;
+    return node->sum;
+}
+void fix_sum(Node* node){//expects that node!=nullptr
+    node->sum= get_sum(node->left)+ get_sum(node->right)+ node->key;
+}
+void rotation(Node* father, Node* son){
+    fix_sum(son);
+    fix_sum(father);
+    if (father->parent!= nullptr){
+        if ((father->parent)->left==father){
+            father->parent->left=son;
+        }else{
+            father->parent->right=son;
+        }
+    }
+    son->parent=father->parent;
+    if (father->left==son){
+        father->left=son->right;
+        son->right=father;
+    }else{
+        father->right=son->left;
+        son->left=father;
+    }
+    if (son->right!= nullptr) son->right->parent=son;
+    if (son->left!= nullptr) son->left->parent=son;
+    if (father->right!= nullptr) father->right->parent=father;
+    if (father->left!= nullptr) father->left->parent=father;
+    fix_sum(father);
+    fix_sum(son);
+}
+
+void zig_zig(Node* vertex){
+    rotation(vertex->parent->parent, vertex->parent);
+    rotation(vertex->parent, vertex);
+}
+void zig_zag(Node* vertex){
+    rotation(vertex->parent, vertex);
+    rotation(vertex->parent, vertex);
+}
+bool zig_zig_needed(Node* vertex){
+    return (((vertex->parent)->parent)->left==vertex->parent)==((vertex->parent)->left==vertex);
+}
+Node* splay(Node* vertex){//TODO check
+    if (vertex->parent==nullptr) return vertex;
+    if ((vertex->parent)->parent== nullptr) {
+        rotation(vertex->parent, vertex);
+        return vertex;
+    }
+    if (zig_zig_needed(vertex))
+        zig_zig(vertex);
+    else zig_zag(vertex);
+    return splay(vertex);
+}
+//предлагается найти ближайшую к ключу вершину, а не конкретно ту, которая его содержит
+Node* find(Node* root, long long x){//возвращает ссылку на узел с самым близким к этому значением
+    if (root== nullptr) return nullptr;
+    if (root->key==x) return splay(root);
+    if ( x < root-> key && root->left!= nullptr) return find(root->left, x);
+    if ( x > root-> key && root->right!= nullptr) return find(root->right, x);
+    return splay(root);
+}
+std::pair<Node*, Node*> split( Node* root, long long x){//разбиение дерева по ключу, возвращаем указатель на то, что окажется слева
+    if (root== nullptr) {
+        return {nullptr, nullptr};
+    }
+    //Node* initial_root=root;
+    root=find(root, x);//в корень перетягивается ближайшая к х вершина
+    if (root->key==x){
+        if (root->right!= nullptr){
+            root->right->parent= nullptr;
+        }
+        root->sum=root->key+ get_sum(root->left);
+        std::pair<Node*, Node*> returned= {root, root->right};//запихнули х в левое дерево
+        root->right= nullptr;
+        return returned;
+    }
+    if (root->key < x){
+        if (root->right!= nullptr){
+            root->right->parent= nullptr;
+        }
+        root->sum= root->key+ get_sum(root->left);
+        std::pair<Node*, Node*> returned= {root, root->right};
+        root->right= nullptr;
+        return returned;
+    }
+    if (root->left!= nullptr){
+        root->left->parent= nullptr;
+    }
+    root->sum= root->key+ get_sum(root->right);
+    std::pair<Node*, Node*> returned= {root->left, root};
+    root->left= nullptr;
+    return returned;
+}
+Node* insert(Node* root, long long x){
+    std::pair<Node*, Node*> root_pair=split(root, x);
+    if (root_pair.first!= nullptr && root_pair.first->key==x) {
+        root=root_pair.first;
+        root->right=root_pair.second;
+        if (root_pair.second!= nullptr) root_pair.second->parent=root;
+        fix_sum(root);
+        return root;
+    }
+    root=new Node( x, root_pair.first, root_pair.second);
+    fix_sum(root);
+    return root;
+}
+Node* merge(Node* left_root, Node* right_root){
+    if (right_root== nullptr) return left_root;
+    if (left_root== nullptr) return right_root;
+    right_root=find(right_root, left_root->key);
+    right_root->left= left_root;
+    left_root->parent= right_root;
+    fix_sum(right_root);
+    return right_root;
+}
+void __show_tree (const std::string prefix, Node* node, bool isLeft) {
+    if (node != nullptr) {
+        std::cout << prefix;
+
+        std::cout << (isLeft ? "|--" : "^--" );
+
+        std::cout << node->key <<"("<<node->sum<<")"<<std::endl;
+
+        __show_tree ( prefix + (isLeft ? "|   " : "    "), node->left, true);
+        __show_tree ( prefix + (isLeft ? "|   " : "    "), node->right, false);
+    }
+}
+
+void show_tree (Node* root) {
+    __show_tree ("", root, false);
+}
+void show(Node* root){
+    if (root==nullptr) return;
+    show(root->left);
+    std::cout<<root->key<<" ";
+    show(root->right);
+}
+long long get_less_or_equal_sum(Node*& root, long long x){
+    std::pair<Node*, Node*> root_pair= split(root, x);
+    long long answer=get_sum(root_pair.first);
+    root= merge(root_pair.first, root_pair.second);
+    return answer;
+}
+void clear (Node* root){
+    if (root== nullptr) return;
+    clear( root->left);
+    clear( root->right);
+    delete root;
+}
+class SplayTree{
+    Node* root;
+public:
+    SplayTree(){
+        root= nullptr;
+    }
+    ~SplayTree(){
+        clear(root);
+    }
+    void _insert(long long x){
+        root=insert(root, x);
+    }
+    long long request(long long l, long long r){
+        return get_less_or_equal_sum(root, r)- get_less_or_equal_sum(root, l-1);
+    }
+
+};
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    int n;
+    std::cin>>n;
+    int base=1e9;
+    SplayTree mySplayTree;
+    long long x;
+    long long l;
+    long long r;
+    long long answer;
+    std::string asking;
+    std::string previous_request="+";
+    for (int i=0; i<n; i++){
+        std::cin>>asking;
+        if (asking=="+"){
+            std::cin>>x;
+            if (previous_request=="+"){
+                mySplayTree._insert(x);
+            }else{
+                x%=base;
+                answer%=base;
+                x+=answer;
+                x%=base;
+                mySplayTree._insert(x);
+            }
+            previous_request="+";
+        }else{
+            previous_request="?";
+            std::cin>>l>>r;
+            answer= mySplayTree.request(l, r);
+            std::cout<<answer<<'\n';
+        }
+    }
+    mySplayTree.~SplayTree();
+    return 0;
+}
