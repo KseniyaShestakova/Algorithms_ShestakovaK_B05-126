@@ -14,24 +14,18 @@ public:
 int SparseTable::getSecondMin( int l, int r){
     if ( r-l+1==2){
         if (std::min( arr[l], arr[r])==arr[l]) return arr[r];
-        else return arr[l];
-
+        return arr[l];
     }
-
     int pow=deg[r-l];
-    int first_stat;
     if ( std::min(arr[first[pow][l]], arr[first[pow][r+1-(1<<pow)]])==arr[first[pow][l]]){
-        first_stat=first[pow][l];
-        if ( first_stat>=r+1-(1<<pow)){// first stat лежит на обоих отрезках, т.е дальше можно сравнивать только вторые
+        const auto& min = first[pow][l];
+        if ( min>=r+1-(1<<pow)){// first stat лежит на обоих отрезках, т.е дальше можно сравнивать только вторые
             return std::min(arr[second[pow][l]], arr[second[pow][r+1-(1<<pow)]]);
-        }else {//случай, когда максимум не лежит на правом отрезке, но лежит на левом
+        }//случай, когда максимум не лежит на правом отрезке, но лежит на левом
             return std::min(arr[second[pow][l]], arr[first[pow][r + 1 - (1 << pow)]]) ;
-        }
-
-    }else{
-        first_stat=first[pow][r+1-(1<<pow)];//случай, когда максимум слева не максимум всего отрезка
-        return std::min( arr[first[pow][l]], arr[second[pow][r+1-(1<<pow)]]);
     }
+    return std::min( arr[first[pow][l]], arr[second[pow][r+1-(1<<pow)]]);
+
 }
 
 int log_2(int i){
