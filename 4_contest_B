@@ -31,14 +31,52 @@ Node::Node(long long key_value, Node *left_son, Node *right_son): key(key_value)
     if (left_son!= nullptr) left_son->parent=this;
     if (right_son!= nullptr) right_son->parent=this;
 }
-long long get_sum(Node* node){
+
+class SplayTree{
+    Node* global_root;
+    static long long get_sum(Node* node);
+    static void fix_sum(Node* node);
+    static void rotation(Node* father, Node* son);
+    static void zig_zig(Node* vertex);
+    static void zig_zag(Node* vertex);
+    static bool zig_zig_needed(Node* vertex);
+    static Node* splay(Node* vertex);
+    static Node* find(Node* root, long long x);
+    static std::pair<Node*, Node*> split( Node* root, long long x);
+    static Node* insert(Node* root, long long x);
+    static Node* merge(Node* left_root, Node* right_root);
+    static long long get_less_or_equal_sum(Node*& root, long long x);
+    static void clear (Node* root);
+public:
+    SplayTree(){
+        global_root= nullptr;
+    }
+    SplayTree& operator=(const SplayTree& other){
+        if (this == &other){
+            return *this;
+        }
+        global_root=other.global_root;
+        return *this;
+    }
+    ~SplayTree(){
+        clear(global_root);
+    }
+    void _insert(long long x){
+        global_root=insert(global_root, x);
+    }
+    long long request(long long l, long long r){
+        return get_less_or_equal_sum(global_root, r)- get_less_or_equal_sum(global_root, l-1);
+    }
+
+};
+long long SplayTree::get_sum(Node* node){
     if (node== nullptr) return 0;
     return node->sum;
 }
-void fix_sum(Node* node){//expects that node!=nullptr
+void SplayTree::fix_sum(Node* node){//expects that node!=nullptr
     node->sum= get_sum(node->left)+ get_sum(node->right)+ node->key;
 }
-void rotation(Node* father, Node* son){
+void SplayTree::rotation(Node* father, Node* son){
     fix_sum(son);
     fix_sum(father);
     if (father->parent!= nullptr){
@@ -64,18 +102,18 @@ void rotation(Node* father, Node* son){
     fix_sum(son);
 }
 
-void zig_zig(Node* vertex){
+void SplayTree::zig_zig(Node* vertex){
     rotation(vertex->parent->parent, vertex->parent);
     rotation(vertex->parent, vertex);
 }
-void zig_zag(Node* vertex){
+void SplayTree::zig_zag(Node* vertex){
     rotation(vertex->parent, vertex);
     rotation(vertex->parent, vertex);
 }
-bool zig_zig_needed(Node* vertex){
+bool SplayTree::zig_zig_needed(Node* vertex){
     return (((vertex->parent)->parent)->left==vertex->parent)==((vertex->parent)->left==vertex);
 }
-Node* splay(Node* vertex){//TODO check
+Node* SplayTree::splay(Node* vertex){
     if (vertex->parent==nullptr) return vertex;
     if ((vertex->parent)->parent== nullptr) {
         rotation(vertex->parent, vertex);
@@ -86,15 +124,14 @@ Node* splay(Node* vertex){//TODO check
     else zig_zag(vertex);
     return splay(vertex);
 }
-//предлагается найти ближайшую к ключу вершину, а не конкретно ту, которая его содержит
-Node* find(Node* root, long long x){//возвращает ссылку на узел с самым близким к этому значением
+Node* SplayTree::find(Node* root, long long x){//возвращает ссылку на узел с самым близким к этому значением
     if (root== nullptr) return nullptr;
     if (root->key==x) return splay(root);
     if ( x < root-> key && root->left!= nullptr) return find(root->left, x);
     if ( x > root-> key && root->right!= nullptr) return find(root->right, x);
     return splay(root);
 }
-std::pair<Node*, Node*> split( Node* root, long long x){//разбиение дерева по ключу, возвращаем указатель на то, что окажется слева
+std::pair<Node*, Node*> SplayTree::split( Node* root, long long x){//разбиение дерева по ключу, возвращаем указатель на то, что окажется слева
     if (root== nullptr) {
         return {nullptr, nullptr};
     }
@@ -126,7 +163,7 @@ std::pair<Node*, Node*> split( Node* root, long long x){//разбиение д�
     root->left= nullptr;
     return returned;
 }
-Node* insert(Node* root, long long x){
+Node* SplayTree::insert(Node* root, long long x){
     std::pair<Node*, Node*> root_pair=split(root, x);
     if (root_pair.first!= nullptr && root_pair.first->key==x) {
         root=root_pair.first;
@@ -139,7 +176,7 @@ Node* insert(Node* root, long long x){
     fix_sum(root);
     return root;
 }
-Node* merge(Node* left_root, Node* right_root){
+Node* SplayTree::merge(Node* left_root, Node* right_root){
     if (right_root== nullptr) return left_root;
     if (left_root== nullptr) return right_root;
     right_root=find(right_root, left_root->key);
@@ -148,7 +185,7 @@ Node* merge(Node* left_root, Node* right_root){
     fix_sum(right_root);
     return right_root;
 }
-void __show_tree (const std::string prefix, Node* node, bool isLeft) {
+/*void __show_tree (const std::string prefix, Node* node, bool isLeft) {
     if (node != nullptr) {
         std::cout << prefix;
 
@@ -169,39 +206,22 @@ void show(Node* root){
     show(root->left);
     std::cout<<root->key<<" ";
     show(root->right);
-}
-long long get_less_or_equal_sum(Node*& root, long long x){
+}*/
+long long SplayTree::get_less_or_equal_sum(Node*& root, long long x){
     std::pair<Node*, Node*> root_pair= split(root, x);
     long long answer=get_sum(root_pair.first);
     root= merge(root_pair.first, root_pair.second);
     return answer;
 }
-void clear (Node* root){
+void SplayTree::clear (Node* root){
     if (root== nullptr) return;
     clear( root->left);
     clear( root->right);
     delete root;
 }
-class SplayTree{
-    Node* root;
-public:
-    SplayTree(){
-        root= nullptr;
-    }
-    ~SplayTree(){
-        clear(root);
-    }
-    void _insert(long long x){
-        root=insert(root, x);
-    }
-    long long request(long long l, long long r){
-        return get_less_or_equal_sum(root, r)- get_less_or_equal_sum(root, l-1);
-    }
-
-};
 int main() {
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(NULL);
+    //std::ios_base::sync_with_stdio(false);
+    //std::cin.tie(NULL);
     int n;
     std::cin>>n;
     int base=1e9;
@@ -233,6 +253,5 @@ int main() {
             std::cout<<answer<<'\n';
         }
     }
-    mySplayTree.~SplayTree();
     return 0;
 }
