@@ -1,0 +1,109 @@
+/*Шестакова Ксения, Б05-126
+Компания BrokenTiles планирует заняться выкладыванием во дворах у состоятельных клиентов узор из черных и белых плиток, каждая из которых имеет размер 1×1 метр. 
+Известно, что дворы всех состоятельных людей имеют наиболее модную на сегодня форму прямоугольника M×N метров.
+
+Однако при составлении финансового плана у директора этой организации появилось целых две серьезных проблемы: во первых, каждый новый клиент очевидно захочет,
+чтобы узор, выложенный у него во дворе, отличался от узоров всех остальных клиентов этой фирмы, а во вторых, этот узор должен быть симпатичным.
+
+Как показало исследование, узор является симпатичным, если в нем нигде не встречается квадрата 2×2 метра, полностью покрытого плитками одного цвета.
+
+Для составления финансового плана директору необходимо узнать, сколько клиентов он сможет обслужить, прежде чем симпатичные узоры данного размера закончатся. 
+Помогите ему!
+
+Решение : динамика по маскам, dp[m][mask], 0 <= mask < 2*n, хранит кличество симпатичных узоров в таблице m*n, в последнем столбце которого черными являются клетки,
+соответствующие тем позициям, на которых в двоичной записи mask стоят единицы. Переход от столбца dp[n - 1][i] (i = 0, 1, ..., 2*m - 1) к dp[n][i]
+(i = 0, 1, ..., 2*n - 1) осуществляется домножением на предпосчитанную матрицу connection (см. в функции number_of_ornaments, там же начальные значения dp : dp[i] = 1,
+т.к любой узор в таблице с одной строкой - симпатичный). Асимптотика m*(n ^ 3)* log m (m >= n) за счет быстрого перемножения матриц.
+*/
+#include <iostream>
+#include <vector>
+
+
+int are_compatible(int mask1, int mask2, int n){
+    bool flag = true;
+    int current1 = mask1 % 2;
+    int current2 = mask2 % 2;
+    int counter = n - 1;
+    while(counter){
+        mask1 = (mask1 >> 1);
+        mask2 = (mask2 >> 1);
+        if (current1 == current2 && (mask1 % 2) == (mask2 % 2) && (mask1 % 2 == current1)){
+            flag = false;
+        }
+        current1 = mask1 % 2;
+        current2 = mask2 % 2;
+        counter--;
+    }
+    return flag;
+}
+
+struct Matrix{
+    std::vector<std::vector<int>> matrix;
+    Matrix(std::vector<std::vector<int>>& initial){
+        matrix = initial;
+    }
+    Matrix& operator=(const Matrix& other){
+        matrix = other.matrix;
+        return *this;
+    }
+    Matrix(int n){
+        matrix.resize(n);
+        for (int i = 0; i < n; ++i){
+            matrix[i].resize(n);
+        }
+    }
+    Matrix operator*(const Matrix& other) const{
+        int n = matrix.size();
+        Matrix answer(n);
+        for (int i = 0; i < n; ++i){
+            for (int j = 0; j < n; ++j){
+                int value = 0;
+                for (int k = 0; k < n; ++k){
+                    value += matrix[i][k] * other.matrix[k][j];
+                }
+                answer.matrix[i][j] = value;
+            }
+        }
+        return answer;
+    }
+    Matrix power(int n){
+        Matrix answer(matrix.size());
+        for (int i = 0; i < matrix.size(); ++i) {
+            answer.matrix[i][i] = 1;
+        }
+        if (n == 0) return answer;
+        if (n % 2 == 1) return (*this * power(n -1));
+        Matrix half = power(n /2);
+        return (half * half);
+    }
+};
+
+int number_of_ornaments(int n, int m){
+    Matrix connection(1 << n);
+    for (int i = 0; i < (1 << n); ++i){
+        for (int j = 0; j < (1 << n); ++j){
+            connection.matrix[i][j] = are_compatible(i, j, n); //проверяем на совместимость маски-замощения
+        }
+    }
+    std::vector<int> dp (1 << n);//dp[i] - сколько существует замощений соответствующей длины, заканчивающихся на маску i
+    for (int i = 0; i < (1 << n); ++i){
+        dp[i] = 1; //сколько хороших замощений ширины 1
+    }
+    if (m == 1) return (1 << n);
+    Matrix result = connection.power(m -1);
+    int answer = 0;
+    for (int i = 0; i < (1 << n); ++i){
+        for (int j = 0; j < (1 << n); ++j){
+            answer += result.matrix[i][j] * dp[j];
+        }
+    }
+    return answer;
+}
+int main() {
+    int m;
+    int n;
+    std::cin >> m >> n;
+    if (n > m) std::swap(n, m); //so that n <= m
+    std::cout << number_of_ornaments(n, m);
+    return 0;
+}
