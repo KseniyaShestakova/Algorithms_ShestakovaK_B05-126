@@ -1,0 +1,122 @@
+/*Крис Юрьевич Каменев на вокзале решил сыграть в "Трехкарточный Монти", хотя его мать запретила ему это делать. В этой игре участвуют три карты, выставленные в ряд слева направо. Изначально карта с валетом, которую нужно угадать, находится под стоящей посередине чашкой.
+
+Затем, за один ход карточный мошенник меняет местами карту посередине с одной из двух других карт случайным образом (он выберет каждую с одинаковой вероятностью),
+так что выбранная карта становится посередине. Игра длится n ходов, и в каждом из них мошенник независимо выбирает карту для обмена со средней на каждом ходу.
+
+После n-го хода мошенник просит Криса указать на карту с валетом, и он указывает на стоящую посередине карту, но Крис отвлекся во время игры и не уверен,
+находится ли там карта или нет. Поэтому он просит вас сообщить ему вероятность того, что карта с валетом действительно посередине.
+
+Число ходов n может быть очень большим, поэтому Крис не сообщил вам его. Вместо этого он дал вам массив a1,a2,...,ak, такой, что
+
+n=∏i=1kai (прозведение всех a_i),
+другими словами, n равно произведению чисел данного массива.
+Из-за проблем с точностью Крис просит вас сообщить ответ в виде несократимой дроби. Другими словами, найдите ответ в виде p/q, причем gcd(p,q)=1, где gcd — наибольший общий делитель. Так как p и q могут быть очень большими, достаточно вывести остаток от деления каждого из них на 109+7.
+
+Заметьте, что мы хотим, чтобы наибольший общий делитель p и q был равен 1, а не наибольший общий делитель их остатков от деления на 109+7
+
+Хотим хранить последний столбец трезмерного массива 2*n, dp[0][n] - количество последовательностей действий карточного мошенника, приводящих к тому, что после n-ого
+хода карта с валетом лежит на средней позиции, dp[0][n] - количество последовательностей действий карточного мошенника, не приводящих к тому, что после n-ого
+хода карта с валетом лежит на средней позиции. Переход от dp[i][n - 1] к dp[i][n] (i = 0, 1) осуществляется за счет домножения на матрицу перехода
+(матрица описана в начале функции monty), там же - начальные значения dp. Работает за n log n за счет быстрого перемножения матриц.
+
+*/
+#include <iostream>
+#include <vector>
+
+struct Matrix{
+//матрица написана, как вектор из 4 элементов, т.к. иначе она не заходит по времени в контест
+    static const long long base = 1e9 + 7;
+    std::vector<long long> matrix;
+    Matrix& operator=(const Matrix& other){
+        matrix = other.matrix;
+        return *this;
+    }
+    Matrix(){
+        matrix.resize(4);
+    }
+    void  power(long long n){
+        if (n == 1) return;
+        if (n % 2 == 1){
+              long long cell_0 = matrix[0];
+              long long cell_1 = matrix[1];
+              long long cell_2 = matrix[2];
+              long long cell_3 = matrix[3];
+              power(n - 1);
+              long long new_cell_0 = (cell_0 * matrix[0] + cell_1 * matrix[2]) % base;
+              long long new_cell_1 = (cell_0 * matrix[1] + cell_1 * matrix[3]) % base;
+              long long new_cell_2 = (cell_2 * matrix[0] + cell_3 * matrix[2]) % base;
+              long long new_cell_3 = (cell_2 * matrix[1] + cell_3 * matrix[3]) % base;
+              matrix[0] = new_cell_0;
+              matrix[1] = new_cell_1;
+              matrix[2] = new_cell_2;
+              matrix[3] = new_cell_3;
+              return;
+
+        }
+        power(n /2);
+              long long cell_0 = matrix[0];
+              long long cell_1 = matrix[1];
+              long long cell_2 = matrix[2];
+              long long cell_3 = matrix[3];
+              long long new_cell_0 = (cell_0 * matrix[0] + cell_1 * matrix[2]) % base;
+              long long new_cell_1 = (cell_0 * matrix[1] + cell_1 * matrix[3]) % base;
+              long long new_cell_2 = (cell_2 * matrix[0] + cell_3 * matrix[2]) % base;
+              long long new_cell_3 = (cell_2 * matrix[1] + cell_3 * matrix[3]) % base;
+              matrix[0] = new_cell_0;
+              matrix[1] = new_cell_1;
+              matrix[2] = new_cell_2;
+              matrix[3] = new_cell_3;
+              return;
+    }
+};
+
+long long power(long long num, long long n){
+    long long base = 1e9 + 7;
+    if (n == 0) return 1;
+    if (n % 2 == 1) return (num * power(num, n - 1))% base;
+    long long half = power ( num, n / 2);
+    return (half * half) % base;
+}
+
+std::pair<long long, long long> monty(std::vector<long long>& a){
+    Matrix conversion;
+    conversion.matrix[0] = 0;
+    conversion.matrix[1] = 1;
+    conversion.matrix[2] = 2;
+    conversion.matrix[3] = 1;
+    int n = a.size();
+    std::vector<long long> dp = {1, 0};
+    for (int i = 0; i < n; ++i){
+        if (a[i] == 1) continue;
+        conversion.power(a[i]);
+    }
+    std::pair<long long, long long> answer;
+    long long ans = conversion.matrix[0]*dp[0] + conversion.matrix[1]*dp[1];
+    ans %= Matrix::base;
+    if (ans % 2 == 0) ans /= 2;
+    else ans = (ans + Matrix::base)/2;
+    answer.first = ans % Matrix::base;
+    long long num = 2;
+    for (int i = 0; i < n; ++i){
+        if (a[i] == 1) continue;
+        num = power(num, a[i]);
+    }
+    if (num % 2 == 0) num /= 2;
+    else num = (num + Matrix::base) / 2;
+    answer.second = num;
+    return answer;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    int k;
+    std::cin >> k;
+    std::vector<long long> a(k);
+    for (int i = 0; i < k; ++i){
+        std::cin >> a[i];
+    }
+    std::pair<long long, long long> answer = monty(a);
+    std::cout << answer.first <<"/"<<answer.second;
+    return 0;
+}
