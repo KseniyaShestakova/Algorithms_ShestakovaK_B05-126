@@ -1,0 +1,53 @@
+/*Шестакова Ксения Олеговна, Б05-126
+Требуется найти в связном графе остовное дерево минимального веса.
+Воспользуйтесь алгоритмом Прима(сначала в качестве дерева берется одна вершина, 
+далее на каждой итерации к имеющемуся дереву добавляется вершина, соединенная с ним
+наиболее коротким ребром)
+*/
+
+
+#include <iostream>
+#include <vector>
+#include <queue>
+
+long long MST(std::vector<std::vector<std::pair<int, int>>>& children){
+    int n = children.size();
+    std::vector<bool> used (n, false);
+    std::priority_queue<std::pair<int, int>> q;
+    std::vector<int> dist_from_tree (n, INT32_MAX);
+    q.emplace(0, 0);
+    long long weight = 0;
+    int counter = 0;
+    while (counter < n){
+        auto curr = q.top();
+        q.pop();
+        if (used[curr.second]) continue;
+        used[curr.second] = true;
+        ++counter;
+        weight -= curr.first;
+        for (auto v: children[curr.second]){
+            dist_from_tree[v.first] = std::min(dist_from_tree[v.first], v.second);
+            q.emplace(-dist_from_tree[v.first], v.first);
+        }
+    }
+    return weight;
+
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<std::vector<std::pair<int, int>>> children(n); //вектор с соседями каждой вершины
+    int b, e, w;
+    for (int i = 0; i < m; ++i){
+        std::cin >> b >> e >> w;
+        --b;
+        --e;
+        children[b].emplace_back(e, w);
+        children[e].emplace_back(b, w);
+    }
+    std::cout << MST(children);
+    return 0;
+}
