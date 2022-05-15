@@ -1,0 +1,69 @@
+/*Шестакова Ксения, Б05-126
+
+Дан взвешенный неориентированный граф.
+Требуется найти вес минимального пути между двумя вершинами.
+
+Решение: веса неотрицательные, поэтому алгоритм Дейкстры
+*/
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <set>
+
+long long distance(int s, int t, std::vector<std::vector<std::pair<int, long long>>>& children){
+    //хотим реализовать алгоритм Дейкстры
+    int n = children.size();
+    std::vector<long long> dist (n, INT64_MAX - 1);
+    dist[s] = 0;
+    std::priority_queue<std::pair<long long, int>> unused_dist;
+    std::set<int> extracted; //не вектор, т.к вершин много
+    for (int i = 0; i < n; ++i){
+        unused_dist.push(std::pair<long long, int>(-dist[i], i));
+    }
+    while(!unused_dist.empty()){
+        int v = unused_dist.top().second;
+        if (v == t){
+            if (dist[v] == INT64_MAX - 1) return -1;
+            return dist[v];
+        }
+        unused_dist.pop();
+        if (extracted.find(v) != extracted.end()){
+            continue;
+        }
+        extracted.insert(v);
+        for (int i = 0; i < children[v].size(); ++i){
+            if (extracted.find(children[v][i].first) != extracted.end()){
+                continue;
+            }
+            dist[children[v][i].first] = std::min(dist[children[v][i].first], dist[v] + children[v][i].second);
+            if (dist[children[v][i].first] == dist[v] + children[v][i].second){
+                unused_dist.push(std::pair<long long, int>(-dist[children[v][i].first], children[v][i].first));
+            }
+        }
+    }
+    return -1;
+
+}
+
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    int n, m;
+    std::cin >> n >> m;
+    int s, t;
+    std::cin >> s >> t;
+    --s;
+    --t;
+    std::vector<std::vector<std::pair<int, long long>>> children (n);
+    int b, e;
+    long long w;
+    for (int i = 0; i < m; ++i){
+        std::cin >> b >> e >> w;
+        children[--b].emplace_back(--e, w);
+        children[e].emplace_back(b, w);
+    }
+    std::cout << distance(s, t, children);
+    return 0;
+}
