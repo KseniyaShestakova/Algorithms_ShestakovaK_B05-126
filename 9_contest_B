@@ -1,0 +1,72 @@
+/* Шестакова Ксения, Б05-126
+Требуется найти в связном графе остовное дерево минимального веса.
+Воспользуйтесь алгоритмом Крускала (на каждой итерации алгоритма добавляется кратчайшее из
+ранее не рассмотренных ребер, добавление которого не создает цикла, делается за счет СНМ (DSU))
+*/
+
+#include <iostream>
+#include <vector>
+#include <tuple>
+#include <algorithm>
+
+struct DSU{
+    int n; //size
+    int max_size = 1;
+    std::vector<int> parent = std::vector<int>(n, -1);
+    std::vector<int> size = std::vector<int>(n, 1);
+    DSU(int _n): n(_n){};
+    int get_parent(int vertex){
+        if (parent[vertex] == -1) return vertex;
+        return parent[vertex] = get_parent(parent[vertex]);
+    }
+    bool unite(int first, int second){
+        int first_parent = get_parent(first);
+        int second_parent = get_parent(second);
+        if (first_parent == second_parent) return false;
+        if (size[first_parent] < size[second_parent]){
+            parent[first_parent] = second_parent;
+            size[second_parent] += size[first_parent];
+            max_size = std::max(size[second_parent], max_size);
+            return true;
+        }
+        parent[second_parent] = first_parent;
+        size[first_parent] += size[second_parent];
+        max_size = std::max(size[first_parent], max_size);
+        return true;
+    }
+    bool completed(){
+        return max_size == n;
+    }
+};
+
+long long MST(int n, std::vector<std::tuple<int, int, int>>& edges){
+    std::sort(edges.begin(), edges.end());
+    //надо сконструировать СНМ и по очереди добавлять туда ребра
+    DSU dsu(n);
+    int weight = 0;
+    int counter = 0;
+    while (!dsu.completed()){
+        auto edge = edges[counter];
+        if (dsu.unite(std::get<1>(edge), std::get<2>(edge))){
+            weight += std::get<0>(edge);
+        }
+        ++counter;
+    }
+    return weight;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<std::tuple<int, int, int>> edges;
+    edges.reserve(m);
+    int b, e, w;
+    for (int i = 0; i < m; ++i){
+        std::cin >> b >> e >> w;
+        edges.emplace_back(w, --b, --e);
+    }
+    std::cout << MST(n, edges);
+    return 0;
+}
