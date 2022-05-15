@@ -1,0 +1,109 @@
+/*Шестакова Ксения, Б05-126
+
+На шахматной доске размером 8×8 заданы две клетки. 
+Соедините эти клетки кратчайшим путем коня.
+
+Решение: строим граф, в которм вершны - клетки доски, и они соединены ребром, если из одной из
+них в другую может прейти конь за один шаг.С помощью обхода в глубину ищем кратчайший путь 
+между заданными клетками
+*/
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <set>
+
+
+std::vector<std::pair<int, int>> path(std::pair<int, int>& start, std::pair<int, int>& end){
+    //сначала надо построить граф - шахматную доску
+    std::vector<std::vector<std::vector<std::pair<int, int>>>> children_of_cell (8);
+    for (int i = 0; i < 8; ++i){
+        children_of_cell[i].resize(8);
+        for (int j = 0; j < 8; ++j){
+            if ( i >= 2 && j >= 1){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i - 2, j - 1));
+            }
+            if ( i >= 1 && j >= 2){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i - 1, j - 2));
+            }
+            if ( i < 6 && j < 7){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i + 2, j + 1));
+            }
+            if ( i < 7 && j < 6){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i + 1, j + 2));
+            }
+            if ( i >= 2 && j < 7){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i - 2, j + 1));
+            }
+            if ( i < 6 && j >= 1){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i + 2, j - 1));
+            }
+            if ( j >= 2 && i < 7){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i + 1, j - 2));
+            }
+            if ( j < 6 && i >= 1){
+                children_of_cell[i][j].push_back(std::pair<int, int>(i - 1, j + 2));
+            }
+        }
+    }
+
+    std::vector<std::vector<int>> dist(8);
+    for (int i = 0; i < 8; ++i){
+        dist[i].resize(8);
+    }
+    dist[start.first][start.second] = 0;
+    std::queue<std::pair<int, int>> q;
+    q.push(start);
+    std::vector<std::vector<std::pair<int, int>>> parent (8);
+    for (int i = 0; i < 8; ++i){
+        parent[i].resize(8);
+    }
+    parent[start.first][start.second] = std::pair<int, int>(-1, -1);
+    std::vector<std::vector<bool>> used (8);
+    for (int i = 0; i < 8; ++i){
+        used[i].resize(8);
+    }
+    while(!q.empty()){
+        std::pair<int, int> v = q.front();
+        if (v == end) break;
+        used[v.first][v.second] = true;
+        q.pop();
+        for (int i = 0; i < children_of_cell[v.first][v.second].size(); ++i){
+            //нельзя добавлять тех, кто уже был
+            if (used[children_of_cell[v.first][v.second][i].first][children_of_cell[v.first][v.second][i].second])
+                continue;
+            used[children_of_cell[v.first][v.second][i].first][children_of_cell[v.first][v.second][i].second] = true;
+            dist[children_of_cell[v.first][v.second][i].first][children_of_cell[v.first][v.second][i].second] =
+                    dist[v.first][v.second] + 1;
+            parent[children_of_cell[v.first][v.second][i].first][children_of_cell[v.first][v.second][i].second] = v;
+            q.emplace(children_of_cell[v.first][v.second][i]);
+        }
+    }
+    std::vector<std::pair<int, int>> path;
+    std::pair<int, int> curr = end;
+    path.push_back(end);
+    while (curr != start){
+        curr = parent[curr.first][curr.second];
+        path.push_back(curr);
+    }
+    return path;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    std::string first;
+    std::string last;
+    std::cin >> first >> last;
+    std::pair<int, int> start = std::pair<int, int>(int(first[0]) - 97, int(first[1]) - 49);
+    std::pair<int, int> end = std::pair<int, int>(int(last[0]) - 97, int(last[1]) - 49);
+    std::vector<std::pair<int, int>> p = path(start, end);
+    std::string output;
+    for (int i = p.size() - 1; i >= 0 ; --i){
+        output.clear();
+        output += char(p[i].first + 97);
+        output += char(p[i].second + 49);
+        std::cout << output << '\n';
+    }
+    return 0;
+}
