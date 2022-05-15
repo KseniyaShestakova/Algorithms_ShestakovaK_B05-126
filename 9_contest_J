@@ -1,0 +1,150 @@
+/*Шестакова Ксения, Б05-126
+
+Шрек и Осёл уже были на пути домой. Им оставалось только преодолеть лес, который отделял их от болота. Но они поссорились, поэтому не хотят идти вместе.
+
+Лес представляет собой опушки, пронумерованы числами от 1 до n и соединенные m дорожками 
+(может быть несколько дорожек соединяющих две опушки, могут быть дорожки,
+соединяющие опушку с собой же). Из-за ссоры, если по дорожке прошел один из друзей, 
+то второй по той же дорожке уже идти не может. Сейчас друзья находятся на опушке с номером s,
+а болото Шрека — на опушке с номером t. Помогите Шреку и Ослу добраться до болота.
+
+Решение: строим граф, проверяем, можно ли из s в t пустить поток величины 2, если нет, то выводим нет,
+если да, то пускаем и стандартным обходом в графе, состоящем только из ребер, по которым пущен 
+поток, находим 2 непересекающихся по ребрам пути)
+*/
+
+#include <iostream>
+#include <vector>
+#include <queue>
+
+//нужно уметь находить кратчайший путь от s до t в оставшемся графе
+std::vector<int> bfs(int s, int t, std::vector<std::vector<std::pair<int, int>>>& children,
+                     std::vector<std::pair<int, int>>& edge, std::vector<bool>& actual){
+    int n = children.size();
+    int m = actual.size() / 2;
+    std::vector<int> dist (n, INT32_MAX);
+    std::vector<int> parent_edge (n); //ребро, по которому мы впервые пришли в эту вершину
+    std::priority_queue<std::pair<int, int>> q;
+    dist[s] = 0;
+    parent_edge[s] = -1;
+    q.emplace(-dist[s], s);
+    while (!q.empty()){
+        auto top = q.top();
+        auto curr_dist = dist[top.second];
+        q.pop();
+        if (top.second == t){
+            int v = top.second;
+            // этому моменту нашли расстояние до вершины
+            std::vector<int> path;
+            while (parent_edge[v] != -1){
+                auto e = parent_edge[v];
+                path.push_back(e);
+                actual[e] = false;
+                if (e < m) actual[e + m] = true;
+                else actual[e - m] = true;
+                v = edge[e].first;
+            }
+            return path;
+        }
+        for (auto v: children[top.second]){
+            if (curr_dist + 1 >= dist[v.first]) continue;
+            if ( !actual[v.second]) continue;
+            dist[v.first] = curr_dist + 1;
+            parent_edge[v.first] = v.second;
+            q.emplace(-dist[v.first], v.first);
+        }
+    }
+    return std::vector<int>();
+}
+
+
+
+std::pair<std::vector<int>, std::vector<int>> not_crossing_paths(std::vector<std::vector<std::pair<int, int>>>& children,
+                                                                 std::vector<bool>& actual, std::vector<std::pair<int, int>>& edge, int s, int t){
+    std::vector<int> first_path = bfs(s, t, children, edge, actual);
+    if (first_path.empty()) return {{}, {}};
+    std::vector<int> second_path = bfs(s, t, children, edge, actual);
+    if (second_path.empty()) return {{}, {}};
+    //получили 2 пути, которые могут пересекаться, это надо починить
+    int m = edge.size() / 2;
+    std::vector<int> in_paths (m);
+    for (int e: first_path){
+        if (e < m) ++in_paths[e];
+        else --in_paths[e - m];
+    }
+    for (int e: second_path){
+        if (e < m) ++in_paths[e];
+        else --in_paths[e - m];
+    }
+    int n = children.size();
+    std::vector<std::vector<std::pair<int, int>>> new_children(n);
+    for (int i = 0; i < m; ++i){
+        if (in_paths[i]) new_children[edge[i].first].emplace_back(edge[i].second, i);
+    }
+    actual.assign(m, true);
+    int curr = s;
+    std::vector<int> result_path_first({s});
+    while (curr != t){
+        auto next = new_children[curr][0];
+        actual[next.second] = false;
+        curr = next.first;
+        result_path_first.push_back(curr);
+    }
+    std::vector<int> result_path_second({s});
+    curr = s;
+    while (curr != t){
+        auto next = new_children[curr][0];
+        if (!actual[next.second]) next = new_children[curr][1];
+        actual[next.second] = false;
+        curr = next.first;
+        result_path_second.push_back(curr);
+    }
+    return {result_path_first, result_path_second};
+
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    //хотим понять, можно ли пустить из s в t поток величины 2
+    int n, m, s, t;
+    std::cin >> n >> m >> s >> t;
+    --s;
+    --t;
+    if (s == t){
+        std::cout << "YES" << '\n';
+        std::cout << ++s << '\n';
+        std::cout << s;
+        return 0;
+    }
+    std::vector<std::vector<std::pair<int, int>>> children(n);
+    int b, e;
+    std::vector<bool> actual(2 * m);
+    std::vector<std::pair<int, int>> edge (2 * m);
+    for (int i = 0; i < m; ++i){
+        std::cin >> b >> e;
+        children[--b].emplace_back(--e, i);
+        children[e].emplace_back(b, m + i);
+        edge[i] = {b, e};
+        edge[m + i] = {e, b};
+        actual[i] = true;
+        actual[i + m] = false;
+    }
+    auto x = not_crossing_paths(children, actual, edge, s, t);
+    if (x.first.empty()){
+        std::cout << "NO";
+        return 0;
+    }
+    std::cout << "YES" << '\n';
+    for (auto v: x.first){
+        std::cout << ++v << " ";
+    }
+    std::cout << '\n';
+    for (auto v: x.second){
+        std::cout << ++v << " ";
+    }
+    std::cout << '\n';
+
+
+    return 0;
+}
