@@ -1,0 +1,79 @@
+/* Шестакова Ксения, Б05-126
+Задан ориентированный ациклический граф. Требуется определить 
+минимальное количество не пересекающихся по вершинам путей, покрывающих все вершины.
+
+Решение: ищем паросочетание в неориентированном двудольном графе, построенном
+по входному графу следующим образом: раздваиваем вершины из из вершины i первой доли проводим ребро
+в вершину j второй, если в иссходном графе было ребро из i в j. По паросочетанию восстанавливаем путь,
+как в теор.дз. Если в паросочетании получилось n-k ребер, то исходный граф разбивается на k путей
+(в каждом пути число вершин на 1 больше, чем ребер, и каждая вершина (из n) попала в некоторый путь)
+
+*/
+
+#include <iostream>
+#include <vector>
+
+//проверяет, есть ли из этой вершины путь, увеличивающий паросочетание (алгоритм с лекции)
+bool augment(int v, std::vector<bool>& used, std::vector<std::vector<int>>& children, std::vector<int>& matching){
+    if (used[v]) return false;
+    used[v] = true;
+    for (auto to: children[v]){
+        if (matching[to] == -1 || augment(matching[to], used, children, matching)){
+            matching[to] = v;
+            return true;
+        }
+    }
+    return false;
+}
+
+//ищет макс. паросочетание
+int max_matching_size(int n, int m, std::vector<std::vector<int>>& children){
+    int sz = children.size();
+    std::vector<bool> used (sz, false);
+    std::vector<int> matching (sz, -1);
+    for (int v = 0; v < sz; ++v){
+        used.assign(sz, false);
+        augment(v, used, children, matching);
+    }
+    
+    int left_match_size = 0;
+    int right_match_size = 0;
+    for (int i = 0; i < n; ++i){
+        if (matching[i] != -1)
+            ++left_match_size;
+    }
+    for (int i = 0; i < n; ++i){
+        if (matching[i + n] != -1)
+            ++right_match_size;
+    }
+    return std::max(left_match_size, right_match_size);
+}
+
+int min_path_coverage(int m, std::vector<std::vector<int>>& initial_children){
+    int n = initial_children.size();
+    std::vector<std::vector<int>> children (2 * n);
+    for (int i = 0; i < n; ++i){
+        for (auto j: initial_children[i]){
+            //надстраиваем неориентированный двудольный граф
+            children[i].push_back(j + n);
+            children[j + n].push_back(i);
+        }
+    }
+    auto max_match = max_matching_size(n, m, children);
+    return n - max_match;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<std::vector<int>> children(n);
+    int b, e;
+    for (int i = 0; i < m; ++i){
+        std::cin >> b >> e;
+        children[--b].push_back(--e);
+    }
+    std::cout << min_path_coverage(m, children);
+    return 0;
+}
