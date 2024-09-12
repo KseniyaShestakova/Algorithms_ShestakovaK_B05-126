@@ -1,0 +1,237 @@
+/*Шестакова Ксения, Б05-126
+https://codeforces.com/group/PVbQ8eK2T4/contest/357142/submission/138781276
+
+Реализуйте AVL-дерево. Решения с использованием других структур засчитываться не будут.
+
+Входные данные
+Входной файл содержит описание операций с деревом. Операций не больше 105.
+
+В каждой строке находится одна из следующих операций:
+
+insert x — добавить в дерево ключ x. Если ключ x есть в дереве, то ничего делать не надо.
+delete x — удалить из дерева ключ x. Если ключа x в дереве нет, то ничего делать не надо.
+exists x — если ключ x есть в дереве, вывести «true», иначе «false»
+next x — минимальный элемент в дереве, больший x, или «none», если такого нет.
+prev x — максимальный элемент в дереве, меньший x, или «none», если такого нет.*/
+
+#include <iostream>
+#include <string>
+
+class AVL{
+    struct Node{
+        int key;
+        Node* left;
+        Node* right;
+        int height;
+        int balance();
+        Node(int key_value);
+        void fix_height();
+    };
+    Node* global_root;
+    static Node* left_rotation( Node* current);
+    static Node* right_rotation( Node* current);
+    static Node* fix_balance( Node* current);
+    static bool exists ( Node* root, int x);
+    static int next ( Node* root, int x);
+    static int prev ( Node* root, int x);
+    static Node* insert ( Node* root, int key_value);
+    static int getAndEraseMin( Node*& root);
+    static Node* erase(Node* root, Node* global_root, int x);
+    static void clear (Node* root);
+public:
+    void show(AVL::Node* root);
+    bool _exists(int x){
+        return exists(global_root, x);
+    }
+    void _insert(int x){
+        if (!exists(global_root, x))  global_root=insert(global_root, x);
+    }
+    void _delete(int x){
+        if ( exists(global_root, x))  global_root=erase(global_root, global_root, x);
+    }
+    int _prev(int x){
+        return prev(global_root, x);
+    }
+    int _next(int x) {
+        return next(global_root, x);
+    }
+    AVL(){
+        global_root=nullptr;
+    }
+    AVL& operator=(const AVL& other){
+        if (this == & other){
+            return *this;
+        }
+        global_root = other.global_root;
+        return *this;
+    }
+    ~AVL(){
+        clear(global_root);
+    }
+
+};
+AVL::Node::Node(int key_value) {
+    key=key_value;
+    left= nullptr;
+    right= nullptr;
+    height=1; //считаем высоту вместе с самой вершиной
+}
+
+int AVL::Node::balance() {
+    int right_height=0;
+    int left_height=0;
+    if (right!= nullptr) right_height=right->height;
+    if (left!= nullptr) left_height=left->height;
+    int res=(right_height)-(left_height);
+    return res;
+}
+
+void AVL::Node::fix_height() {
+    int left_height=0;
+    int right_height=0;
+    if ( left!= nullptr) left_height=left->height;
+    if ( right!= nullptr) right_height=right->height;
+    height=std::max(left_height, right_height)+1;
+}
+
+AVL::Node* AVL::left_rotation( Node* current){//поворот, в результате которого правый сын станет на место текущего узла
+    Node* new_node=current->right; //новый текущий
+    current->right=new_node->left;
+    new_node->left=current;
+    current->fix_height();
+    new_node->fix_height();
+
+    return new_node;
+}
+
+AVL::Node* AVL::right_rotation( Node* current){//поворот, в результате которого левый сын станет на место текущего узла
+    Node* new_node=current->left; //новый текущий
+    current->left=new_node->right;
+    new_node->right=current;
+    current->fix_height();
+    new_node->fix_height();
+
+    return new_node;
+}
+
+AVL::Node* AVL::fix_balance( Node* current){
+    if (current==nullptr) return nullptr;
+    current->fix_height();
+    if (current->balance()==2){//это значит, чт-о правое поддерево перевешивает и надо крутить влево
+        if ( ((current->right)->balance())<0) current->right= right_rotation(current->right);
+        return left_rotation(current);
+    }
+    if (current->balance()==-2){//это значит, что левое поддерево перевешивает и надо крутить вправо
+        if ( ((current->left)->balance())>0) current->left= left_rotation(current->left);
+        return right_rotation(current);
+    }
+    return current; //случай, когда узел и так сбалансированный
+}
+bool AVL::exists ( Node* root, int x){
+    if (root== nullptr) return false;
+    if ( root->key==x) return true;
+    if ( root->key>=x) return exists( root->left, x);
+    return exists(root->right, x);
+}
+int AVL::next ( Node* root, int x){
+    if (root== nullptr) return 1000000001;
+    if (root->key<=x) return next(root->right, x);
+    int left_next = next(root->left, x);
+    if (left_next!= 1000000001) return left_next;
+    return root->key;
+}
+int AVL::prev ( Node* root, int x){
+    if (root== nullptr) return 1000000001;
+    if (root->key>=x) return prev(root->left, x);
+    int right_prev=prev(root->right, x);
+    if (right_prev!= 1000000001) return right_prev;
+    return root->key;
+}
+AVL::Node* AVL::insert ( Node* root, int key_value){ //вставляем в дерево с корнем root число key_value
+    if ( root== nullptr)  return new Node(key_value);
+    if ( root->key > key_value) root->left=insert(root->left, key_value);
+    else root->right=insert(root->right, key_value);
+    return fix_balance(root);
+}
+int AVL::getAndEraseMin( Node*& root){//находим и удаляем вершину, хранящую наименьший элемент
+    if (root== nullptr) return 1000000001;
+    if (root->left!= nullptr) {
+        int min = getAndEraseMin(root->left);
+        root = fix_balance(root);
+        return min;
+    }
+    int min = root->key;
+    root = root->right;
+    return min;
+}
+AVL::Node* AVL::erase(Node* root, Node* _global_root, int x){//возвращает новый корень, как и все предыдущие
+    if (root== nullptr) return nullptr;
+    if (root->key < x) {
+        root->right=erase( root->right, _global_root, x);
+        return fix_balance(root);
+    }
+    if (root->key > x) {
+        root->left=erase( root->left, _global_root, x);
+        return fix_balance(root);
+    }
+    //root->key==x
+    if (root->right== nullptr) {
+        root = root->left;
+        return fix_balance(root);
+    }
+    int min= getAndEraseMin(root->right); //наименьший элемент в правом поддереве, который мы хотим поставить на место нашего
+    root->key=min;
+    root->right->key= getAndEraseMin(root->right);
+    return fix_balance(root);
+}
+void AVL::clear (Node* root){
+    if (root== nullptr) return;
+    clear( root->left);
+    clear( root->right);
+    delete root;
+}
+void AVL::show (AVL::Node* root){
+    if (root== nullptr) return;
+    show( root->left);
+    std::cout<< (root->key)<<" ";
+    show( root->right);
+}
+
+int main() {
+    //std::ios_base::sync_with_stdio(false);
+    //std::cin.tie(NULL);
+    AVL myAVL;
+    int x;
+    std::string asking;
+
+    while (std::cin>>asking){
+        if ( asking=="insert"){
+            std::cin>>x;
+            myAVL._insert(x);
+        }
+        if (asking=="delete"){
+            std::cin>>x;
+            myAVL._delete(x);
+        }
+        if (asking=="exists"){
+            std::cin>>x;
+            if (myAVL._exists(x)) std::cout<<"true"<<'\n';
+            else std::cout<<"false"<<'\n';
+        }
+        if (asking=="prev"){
+            std::cin>>x;
+            int current_prev=myAVL._prev(x);
+            if ( current_prev== 1000000001) std::cout<<"none";
+            else std::cout<<current_prev;
+            std::cout<<'\n';
+        }
+        if (asking=="next"){
+            std::cin>>x;
+            int current_next=myAVL._next(x);
+            if ( current_next== 1000000001) std::cout<<"none";
+            else std::cout<<current_next;
+            std::cout<<'\n';
+        }
+    }
+    return 0;
+}
